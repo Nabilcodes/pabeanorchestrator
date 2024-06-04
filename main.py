@@ -1,5 +1,6 @@
 import httpx
 import json
+import pika, sys, os
 from fastapi import FastAPI
 from typing import List
 from fastapi.middleware.cors import CORSMiddleware
@@ -46,7 +47,7 @@ app.add_middleware(
 )
 
 # Initialize service clients
-service_client1 = ServiceClient(base_url="http://127.0.0.1:8001")
+service_client1 = ServiceClient(base_url="http://35.213.165.42:8000")
 # service_client2 = ServiceClient(base_url="http://example-service2")
 
 # Initialize orchestration service
@@ -61,7 +62,24 @@ def start_orchestration(billingReq: dict):
     result = orchestration_service.orchestrate(data=billingReq) 
     return {"message": "Orchestration started", "results": result}
 
+
+def main():
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+    channel = connection.channel()
+
+    channel.queue_declare(queue='hello')
+
+    def callback(ch, method, properties, body):
+        print(f" [x] Received {body}")
+
+    channel.basic_consume(queue='hello', on_message_callback=callback, auto_ack=True)
+
+    print(' [*] Waiting for messages. To exit press CTRL+C')
+    channel.start_consuming()
+
 import uvicorn
 
 if __name__ == "__main__":
+    
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    
